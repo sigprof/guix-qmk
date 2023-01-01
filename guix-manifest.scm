@@ -151,12 +151,12 @@
 (define python-milc
   (package
     (name "python-milc")
-    (version "1.6.5")
+    (version "1.6.6")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "milc" version))
-        (sha256 (base32 "0bbqgyzzcq7hpp8xypd188ga49zf9kv7qljbd29ms9kvl45d9j5j"))))
+        (sha256 (base32 "007hdwp659s1wfld92pxdgjz9ijvh949wyf1cbmyzkma30vng8d4"))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-appdirs" ,python-appdirs)
