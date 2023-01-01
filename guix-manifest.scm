@@ -172,16 +172,18 @@
 (define python-hjson
   (package
     (name "python-hjson")
-    (version "3.0.2")
+    (version "3.1.0")
     (source
      (origin
        ;; Sources on pypi don't contain data files for tests
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/hjson/hjson-py")
-             (commit (string-append "v" version))))
+             ;; No proper v3.1.0 tag on github, but the actual code seems to
+             ;; match what's on pypi
+             (commit "1687b811fcbbc54b5ac71cfbaa99f805e406fbcb")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "1jc7j790rcqnhbrfj4lhnz3f6768dc55aij840wmx16jylfqpc2n"))))
+       (sha256 (base32 "1qfqnhvfx5mm7bdajjnnagmvns1zxyksjzh3k5la2ag6a8bp5gki"))))
     (build-system python-build-system)
     (home-page "http://github.com/hjson/hjson-py")
     (synopsis "Human JSON implementation for Python")
