@@ -220,12 +220,12 @@
 (define python-hid
   (package
     (name "python-hid")
-    (version "1.0.4")
+    (version "1.0.5")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "hid" version))
-        (sha256 (base32 "1h9zi0kyicy3na1azfsgb57ywxa8p62bq146pb44ncvsyf1066zn"))))
+        (sha256 (base32 "1s5hvfbmnlmifswr5514f4xxn5rcd429bdcdqzgwkdxrg9zlx58y"))))
     (build-system python-build-system)
     (arguments
      `(#:modules ((srfi srfi-1)
