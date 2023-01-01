@@ -50,10 +50,10 @@
   libusb
   python
   python-build
+  python-check
   python-xyz
   version-control
-  wget
-  python-check)
+  wget)
 
 ;; Some Python modules that are required by QMK are not yet packaged for Guix;
 ;; define packages for those modules here.
