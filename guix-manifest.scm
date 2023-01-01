@@ -35,6 +35,7 @@
   (guix packages)
   (guix download)
   (guix git-download)
+  (guix build-system pyproject)
   (guix build-system python)
   (guix build-system trivial)
   (guix search-paths))
@@ -190,31 +191,32 @@
     (description "Hjson is a syntax extension to JSON.  It is intended to be used like a user interface for humans, to read and edit before passing the JSON data to the machine.  This package contains a Python library for parsing and generating Hjson.")
     (license expat)))
 
-(define python-qmk-dotty-dict
+(define python-dotty-dict
   (package
-    (name "python-qmk-dotty-dict")
-    (version "1.3.0.post1")
+    (name "python-dotty-dict")
+    (version "1.3.1")
     (source
-      (origin
-        (method url-fetch)
-        (uri (pypi-uri "qmk_dotty_dict" version))
-        (sha256 (base32 "18kyzk9a00xbxjsph2a9p03zx05f9dw993n66mlamgv06qwiwq9v"))))
+     (origin
+       ;; Sources on pypi don't contain data files for tests
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pawelzny/dotty_dict")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256 (base32 "0rs83pglkgb4sfnk09rskg8c53hvl7mkjw4vfgl5xc8z13vyi3li"))))
     (build-system python-build-system)
-    ;; TestDottyCache fails with "python3 setup.py test", but succeeds with
-    ;; "pytest"; apparently it assumes that the test is always started in a
-    ;; clean environment.
     (arguments
      `(#:phases (modify-phases %standard-phases
-                  (replace 'check
-                    (lambda* (#:key tests? #:allow-other-keys)
-                      (when tests?
-                        (invoke "pytest")))))))
+                  (add-before 'build 'pretend-version
+                    ;; Workaround for building from a checkout without git metadata
+                    (lambda _
+                      (setenv "SETUPTOOLS_SCM_PRETEND_VERSION" ,version))))))
     (native-inputs
      `(("python-pytest" ,python-pytest)
        ("python-setuptools-scm" ,python-setuptools-scm)))
     (home-page "https://github.com/pawelzny/dotty_dict")
     (synopsis "Dictionary wrapper for quick access to deeply nested keys")
-    (description "This is a fork of dotty-dict that fixes bugs with non-ASCII characters.")
+    (description "Dictionary wrapper for quick access to deeply nested keys.")
     (license expat)))
 
 (define python-hid
@@ -259,36 +261,26 @@
 (define python-qmk
   (package
     (name "python-qmk")
-    (version "1.0.0")
+    (version "1.1.1")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "qmk" version))
-        (sha256 (base32 "1jpr22k539yc1rhn69igvh0s7hrd40vkkgmrn0vwqj257k3ywqns"))))
-    (build-system python-build-system)
-    ;; The package does not come with a setup.py file, so we have to generate
-    ;; one ourselves.
+        (sha256 (base32 "0s9jfx0ld6w18lxq18x5jxyh03pwzafr50nbz2yzhqfdxc4qw0nx"))))
+    (build-system pyproject-build-system)
     (arguments
-     `(#:tests? #f
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'create-setup.py
-           (lambda _
-             (call-with-output-file "setup.py"
-               (lambda (port)
-                 (format port "\
-from setuptools import setup
-setup(name='qmk', version='~a', py_modules=['qmk'])
-" ,version))))))))
+     `(#:tests? #f))
     (propagated-inputs
      `(("python-hid" ,python-hid)
        ("python-pyusb" ,python-pyusb)
        ("python-milc" ,python-milc)
        ("python-setuptools" ,python-setuptools)
+       ("python-dotty-dict" ,python-dotty-dict)
        ("python-hjson" ,python-hjson)
-       ("python-jsonschema" ,python-jsonschema)
+       ("python-jsonschema" ,python-jsonschema-next)
+       ("python-pillow" ,python-pillow)
        ("python-pygments" ,python-pygments)
-       ("python-qmk-dotty-dict" ,python-qmk-dotty-dict)))
+       ("python-pyserial" ,python-pyserial)))
     (home-page "https://qmk.fm/")
     (synopsis "QMK CLI is a program to help users work with QMK Firmware")
     (description "QMK CLI provides various functions for working with QMK Firmware: getting the QMK Firmware sources, setting up the build environment, compiling and flashing the firmware, accessing the debug console provided by the firmware, and many more functions used for the QMK Firmware configuration and development.")
