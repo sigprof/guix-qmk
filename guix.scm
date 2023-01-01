@@ -17,7 +17,12 @@
 ;; This manifest file can be used to set up a development environment for the
 ;; QMK Firmware (https://github.com/qmk/qmk_firmware):
 ;;
-;;   $ guix environment --manifest=path/to/guix-manifest.scm
+;;   $ guix shell -m path/to/guix.scm
+;;
+;; Or, if this guix.scm file is in the current directory, "guix shell" will
+;; load it automatically when invoked without parameters:
+;;
+;;   $ guix shell
 ;;
 ;; The resulting environment provides the "qmk" command that can be used to
 ;; compile the QMK firmware, and also the required toolchains for Arm-based and
