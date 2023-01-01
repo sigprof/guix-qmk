@@ -29,6 +29,7 @@
 ;; need to access the hardware may fail if that setup is not done.
 
 (use-modules
+  (ice-9 match)
   (srfi srfi-1)
   (guix licenses)
   (guix packages)
@@ -299,6 +300,39 @@ setup(name='qmk', version='~a', py_modules=['qmk'])
 ;; into the same variables.
 
 (define (qmk-wrap-toolchain toolchain-name toolchain-package toolchain-env-prefix)
+
+  ;; Make a new list of inputs by applying PROC to all packages listed in
+  ;; INPUTS and keeping the same labels and outputs.
+  (define (map-inputs proc inputs)
+    (define (rewrite input)
+      (match input
+        ((label (? package? package) outputs ...)
+         (cons* label (proc package) outputs))
+        (_
+         input)))
+    (map rewrite inputs))
+
+  ;; Return the list of search path specifications from SEARCH-PATHS which
+  ;; variable names are not found in the VAR-NAMES alist.
+  (define (delete-from-search-paths search-paths var-names)
+    (define (keep search-path)
+      (not (assoc (search-path-specification-variable search-path) var-names)))
+    (filter keep search-paths))
+
+  ;; Return package ORIGINAL with search path specifications matching VAR-NAMES
+  ;; removed from native-search-paths.
+  (define (package-without-native-search-paths original var-names)
+    (package/inherit original
+      (native-search-paths
+        (delete-from-search-paths (package-native-search-paths original) var-names))))
+
+  ;; Make a new list of inputs from INPUTS by removing native search path
+  ;; specifications matching VAR-NAMES from all listed packages.
+  (define (inputs-without-native-search-paths inputs var-names)
+    (define (rewrite package)
+      (package-without-native-search-paths package var-names))
+    (map-inputs rewrite inputs))
+
   (let* ((wrapper-name (string-append "qmk-" toolchain-name))
          (modules '((guix build utils)))
 
@@ -345,7 +379,20 @@ setup(name='qmk', version='~a', py_modules=['qmk'])
                   (map
                     (lambda (var-mapping)
                       (string-append (car var-mapping) "=\"${" (cdr var-mapping) "}\" \\\n"))
-                    search-path-var-names))))
+                    search-path-var-names)))
+
+         ;; The toolchain package with all CROSS_*_PATH native search paths
+         ;; removed from its propagated inputs (these variables will be set to
+         ;; their original values in the wrapper scripts, but leaving them
+         ;; listed in native-search-paths will cause them to be exported with
+         ;; inappropriately combined values taken from multiple different
+         ;; toolchains).
+         (new-toolchain-package
+           (package/inherit toolchain-package
+             (propagated-inputs
+               (inputs-without-native-search-paths
+                 (package-propagated-inputs toolchain-package)
+                 search-path-var-names)))))
 
     ;; Generate a wrapper package with most properties copied from the original
     ;; toolchain package.
@@ -385,7 +432,7 @@ setup(name='qmk', version='~a', py_modules=['qmk'])
         `(("bash" ,bash)
           ("gcc" ,(first (assoc-ref (package-transitive-target-inputs toolchain-package) "gcc")))))
       (propagated-inputs
-       `((,toolchain-name ,toolchain-package)))
+       `((,toolchain-name ,new-toolchain-package)))
       (native-search-paths new-search-paths)
       (synopsis (package-synopsis toolchain-package))
       (description (package-description toolchain-package))
