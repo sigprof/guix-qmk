@@ -49,9 +49,11 @@
   flashing-tools
   libusb
   python
+  python-build
   python-xyz
   version-control
-  wget)
+  wget
+  python-check)
 
 ;; Some Python modules that are required by QMK are not yet packaged for Guix;
 ;; define packages for those modules here.
