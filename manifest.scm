@@ -267,12 +267,12 @@
 (define python-qmk
   (package
     (name "python-qmk")
-    (version "1.1.1")
+    (version "1.1.2")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "qmk" version))
-        (sha256 (base32 "0s9jfx0ld6w18lxq18x5jxyh03pwzafr50nbz2yzhqfdxc4qw0nx"))))
+        (sha256 (base32 "1619q9v90740dbg8xpzqlhwcasz42xj737803aiip8qc3a7zhwgq"))))
     (build-system pyproject-build-system)
     (arguments
      `(#:tests? #f))
