@@ -18,9 +18,9 @@
 ;; This manifest file can be used to set up a development environment for the
 ;; QMK Firmware (https://github.com/qmk/qmk_firmware):
 ;;
-;;   $ guix shell -m path/to/guix.scm
+;;   $ guix shell -m path/to/manifest.scm
 ;;
-;; Or, if this guix.scm file is in the current directory, "guix shell" will
+;; Or, if this manifest.scm file is in the current directory, "guix shell" will
 ;; load it automatically when invoked without parameters:
 ;;
 ;;   $ guix shell
