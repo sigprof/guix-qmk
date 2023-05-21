@@ -283,7 +283,7 @@
        ("python-setuptools" ,python-setuptools)
        ("python-dotty-dict" ,python-dotty-dict)
        ("python-hjson" ,python-hjson)
-       ("python-jsonschema" ,python-jsonschema-next)
+       ("python-jsonschema" ,python-jsonschema)
        ("python-pillow" ,python-pillow)
        ("python-pygments" ,python-pygments)
        ("python-pyserial" ,python-pyserial)))
