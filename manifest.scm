@@ -40,7 +40,6 @@
   (guix licenses)
   (guix packages)
   (guix download)
-  (guix git-download)
   (guix build-system pyproject)
   (guix build-system python)
   (guix build-system trivial)
@@ -48,21 +47,15 @@
 
 (use-package-modules
   avr
-  base
   bash
-  check
-  commencement
-  compression
   embedded
   flashing-tools
   gcc
   libusb
   python
   python-build
-  python-check
   python-xyz
-  version-control
-  wget)
+  version-control)
 
 ;; "python-qmk" is the QMK CLI package which provides the "qmk" command.
 
