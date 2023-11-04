@@ -441,12 +441,12 @@
 
 (define qmk-avr-toolchain
   (qmk-wrap-toolchain "avr-toolchain"
-                      avr-toolchain
+                      (make-avr-toolchain)
                       "AVR"))
 
 (define qmk-arm-none-eabi-nano-toolchain-7-2018-q2-update
   (qmk-wrap-toolchain "arm-none-eabi-nano-toolchain-7-2018-q2-update"
-                      arm-none-eabi-nano-toolchain-7-2018-q2-update
+                      (make-arm-none-eabi-nano-toolchain-7-2018-q2-update)
                       "ARM_NONE_EABI_NANO"))
 
 ;; Finally make the manifest with all required packages.
