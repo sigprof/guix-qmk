@@ -198,34 +198,6 @@
     (description "Hjson is a syntax extension to JSON.  It is intended to be used like a user interface for humans, to read and edit before passing the JSON data to the machine.  This package contains a Python library for parsing and generating Hjson.")
     (license expat)))
 
-(define python-dotty-dict
-  (package
-    (name "python-dotty-dict")
-    (version "1.3.1")
-    (source
-     (origin
-       ;; Sources on pypi don't contain data files for tests
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/pawelzny/dotty_dict")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256 (base32 "0rs83pglkgb4sfnk09rskg8c53hvl7mkjw4vfgl5xc8z13vyi3li"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases (modify-phases %standard-phases
-                  (add-before 'build 'pretend-version
-                    ;; Workaround for building from a checkout without git metadata
-                    (lambda _
-                      (setenv "SETUPTOOLS_SCM_PRETEND_VERSION" ,version))))))
-    (native-inputs
-     `(("python-pytest" ,python-pytest)
-       ("python-setuptools-scm" ,python-setuptools-scm)))
-    (home-page "https://github.com/pawelzny/dotty_dict")
-    (synopsis "Dictionary wrapper for quick access to deeply nested keys")
-    (description "Dictionary wrapper for quick access to deeply nested keys.")
-    (license expat)))
-
 (define python-hid
   (package
     (name "python-hid")
