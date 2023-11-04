@@ -444,9 +444,24 @@
                       (make-avr-toolchain)
                       "AVR"))
 
+;; Fix the bug from Guix commit 35c1df5bd6317b1cd038c1a4aca1c7e4a52d4d93 (the
+;; package returned by (make-newlib-nano-arm-none-eabi-7-2018-q2-update) does
+;; not contain libc_nano.a and libg_nano.a as expected).
+(define newlib-nano-arm-none-eabi-7-2018-q2-update
+  (package
+    (inherit (make-newlib-nano-arm-none-eabi-7-2018-q2-update))
+    (arguments
+      (package-arguments (make-newlib-nano-arm-none-eabi)))))
+
+;; Need to remake the toolchain package to include the fix above.
+(define arm-none-eabi-nano-toolchain-7-2018-q2-update
+  ((@@ (gnu packages embedded) make-arm-none-eabi-toolchain)
+    (make-gcc-arm-none-eabi-7-2018-q2-update)
+    newlib-nano-arm-none-eabi-7-2018-q2-update))
+
 (define qmk-arm-none-eabi-nano-toolchain-7-2018-q2-update
   (qmk-wrap-toolchain "arm-none-eabi-nano-toolchain-7-2018-q2-update"
-                      (make-arm-none-eabi-nano-toolchain-7-2018-q2-update)
+                      arm-none-eabi-nano-toolchain-7-2018-q2-update
                       "ARM_NONE_EABI_NANO"))
 
 ;; Finally make the manifest with all required packages.
