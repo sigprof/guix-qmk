@@ -55,6 +55,7 @@
   compression
   embedded
   flashing-tools
+  gcc
   libusb
   python
   python-build
@@ -441,7 +442,7 @@
 
 (define qmk-avr-toolchain
   (qmk-wrap-toolchain "avr-toolchain"
-                      (make-avr-toolchain)
+                      (make-avr-toolchain #:xgcc gcc-8)
                       "AVR"))
 
 ;; Fix the bug from Guix commit 35c1df5bd6317b1cd038c1a4aca1c7e4a52d4d93 (the
