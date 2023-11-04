@@ -198,43 +198,6 @@
     (description "Hjson is a syntax extension to JSON.  It is intended to be used like a user interface for humans, to read and edit before passing the JSON data to the machine.  This package contains a Python library for parsing and generating Hjson.")
     (license expat)))
 
-(define python-hid
-  (package
-    (name "python-hid")
-    (version "1.0.5")
-    (source
-      (origin
-        (method url-fetch)
-        (uri (pypi-uri "hid" version))
-        (sha256 (base32 "1s5hvfbmnlmifswr5514f4xxn5rcd429bdcdqzgwkdxrg9zlx58y"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:modules ((srfi srfi-1)
-                  (srfi srfi-26)
-                  (guix build utils)
-                  (guix build python-build-system))
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-hidapi-reference
-           (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "hid/__init__.py"
-               (("library_paths = \\(")
-                (string-append
-                 "library_paths = ('"
-                 (find (negate symbolic-link?)
-                       (find-files (assoc-ref inputs "hidapi")
-                                   "^libhidapi-.*\\.so\\..*"))
-                 "',")))
-             #t)))))
-    (inputs
-     `(("hidapi" ,hidapi)))
-    (native-inputs
-     `(("python-nose" ,python-nose)))
-    (home-page "https://github.com/apmorton/pyhidapi")
-    (synopsis "hidapi bindings in ctypes")
-    (description "Python wrapper for the hidapi library using ctypes.")
-    (license expat)))
-
 ;; "python-qmk" is the QMK CLI package which provides the "qmk" command.
 
 (define python-qmk
