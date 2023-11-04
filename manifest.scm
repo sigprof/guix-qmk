@@ -177,27 +177,6 @@
     (description "MILC is a framework for writing CLI applications in Python 3.6+.  It gives you all the features users expect from a modern CLI tool out of the box.")
     (license expat)))
 
-(define python-hjson
-  (package
-    (name "python-hjson")
-    (version "3.1.0")
-    (source
-     (origin
-       ;; Sources on pypi don't contain data files for tests
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/hjson/hjson-py")
-             ;; No proper v3.1.0 tag on github, but the actual code seems to
-             ;; match what's on pypi
-             (commit "1687b811fcbbc54b5ac71cfbaa99f805e406fbcb")))
-       (file-name (git-file-name name version))
-       (sha256 (base32 "1qfqnhvfx5mm7bdajjnnagmvns1zxyksjzh3k5la2ag6a8bp5gki"))))
-    (build-system python-build-system)
-    (home-page "http://github.com/hjson/hjson-py")
-    (synopsis "Human JSON implementation for Python")
-    (description "Hjson is a syntax extension to JSON.  It is intended to be used like a user interface for humans, to read and edit before passing the JSON data to the machine.  This package contains a Python library for parsing and generating Hjson.")
-    (license expat)))
-
 ;; "python-qmk" is the QMK CLI package which provides the "qmk" command.
 
 (define python-qmk
