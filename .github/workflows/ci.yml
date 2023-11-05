@@ -1,0 +1,390 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Branch (user[/repo]:branch)'
+        type: string
+        required: false
+  schedule:
+    - cron: '15 3 * * *'
+
+permissions: {}
+
+defaults:
+  run:
+    # Use `bash` by default.  Note that, according to the documentation, the
+    # real command is `bash --noprofile --norc -eo pipefail {0}`, which makes
+    # the shell catch any errors in pipelines.
+    shell: bash
+
+concurrency:
+  # If the CI run is for a PR, allow a single concurrent run per PR and cancel
+  # all other runs for the same PR (e.g., if the PR was rebased) even when
+  # those runs are for different commits.  If the CI run is for anything else
+  # (push, workflow_dispatch, schedule), allow a single concurrent run per
+  # commit and cancel other runs for the same commit.
+  #
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  guix_cached_paths: |
+    ~/.cache/guix
+    ~/.cache/guix-install-action
+    ~/.cache/guix-root
+    /gnu
+    /var/guix/db/db.sqlite*
+    /var/guix/gcroots
+    /var/guix/profiles
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      strategy: ${{ steps.strategy.outputs.result }}
+      cache_name: ${{ steps.saved_cache_name.outputs.name }}
+    steps:
+      - id: strategy
+        name: Determine strategy for the test job
+        uses: actions/github-script@v6.4.1
+        with:
+          script: |
+            // Default settings.
+            const defaultSource = [
+              { repo: "qmk/qmk_firmware", branch: "master" },
+              { repo: "qmk/qmk_firmware", branch: "develop" },
+            ];
+
+            // Read workflow inputs.
+            let inputSource = "";
+            if (context.eventName == "workflow_dispatch") {
+              const payload = context.payload;
+              const inputs = payload && payload.inputs;
+              inputSource = inputs && inputs.source && inputs.source.trim() || "";
+            }
+
+            // Parse the `source` input.
+            let matrixSource = defaultSource;
+            if (inputSource != "") {
+              const sourceParts = inputSource.split(":", 2);
+              if (sourceParts.length == 2 ) {
+                let repoParts = sourceParts[0].split("/", 2);
+                if (repoParts.length == 1) {
+                  repoParts.push("qmk_firmware");
+                }
+                matrixSource = [
+                  { repo: repoParts.join("/"), branch: sourceParts[1] },
+                ];
+              }
+            }
+
+            // Determine build strategy.
+            const strategy = {
+              "fail-fast": false,
+              "matrix": {
+                "source": matrixSource,
+              },
+            };
+
+            // Print the resulting strategy to the log.
+            core.startGroup("Strategy for the test job:");
+            core.info(JSON.stringify(strategy, null, 2));
+            core.endGroup();
+
+            // Return the strategy as the step output in the JSON format.
+            return strategy;
+
+      - name: Determine possible cache names
+        id: cache_name
+        run: |
+          # Format the cache name
+          base="guix"
+          date="$(date --utc +%Y%m%d)"
+          sha="${{github.sha}}"
+          echo "ok=${base}-ok-${date}-${sha}" >> $GITHUB_OUTPUT
+          echo "ok_date_only_prefix=${base}-ok-${date}-" >> $GITHUB_OUTPUT
+          echo "ok_any_prefix=${base}-ok-" >> $GITHUB_OUTPUT
+          echo "fail=${base}-fail-${date}-${sha}-${{github.run_id}}-${{github.run_attempt}}" >> $GITHUB_OUTPUT
+          echo "fail_same_run_id_prefix=${base}-fail-${date}-${sha}-${{github.run_id}}-" >> $GITHUB_OUTPUT
+          echo "fail_date_only_prefix=${base}-fail-${date}-" >> $GITHUB_OUTPUT
+          echo "any_prefix=${base}-" >> $GITHUB_OUTPUT
+
+      - name: Check whether the Guix cache needs updating
+        id: check_cache
+        uses: actions/cache/restore@v3.3.2
+        with:
+          path: ${{ env.guix_cached_paths }}
+          key: ${{ steps.cache_name.outputs.ok }}
+          lookup-only: true
+
+      - name: Prepare the Guix store before restoring from cache
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        run: |
+          # Make the Guix store writable for the current user
+          sudo mkdir -p /gnu/store /var/guix/db /var/guix/gcroots /var/guix/profiles
+          sudo chown -R ${USER}: /gnu /var/guix
+          sudo chmod -R u+w /gnu /var/guix
+
+      - name: Restore the Guix store from cache
+        id: restore_cache
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        uses: actions/cache/restore@v3.3.2
+        with:
+          path: ${{ env.guix_cached_paths }}
+          key: ${{ steps.cache_name.outputs.ok }}
+          restore-keys: |
+            ${{ steps.cache_name.outputs.fail_same_run_id_prefix }}
+            ${{ steps.cache_name.outputs.ok_date_only_prefix }}
+            ${{ steps.cache_name.outputs.ok_any_prefix }}
+            ${{ steps.cache_name.outputs.any_prefix }}
+
+      - name: Fix up the Guix store after restoring it from cache
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        run: |
+          # Fix up permissions for the Guix store when restoring from cache.
+          sudo chown -R root:root /gnu /var/guix
+          sudo chmod 755 /gnu
+          sudo chmod -R u-w /gnu/store
+          sudo chmod 1775 /gnu/store
+
+          # Move the Guix cache for root to the proper location (that cache is
+          # used to speed up `guix pull`).
+          if [ -d ~/.cache/guix-root ]; then
+            sudo mkdir -p ~root/.cache
+            sudo rm -rf ~root/.cache/guix
+            sudo mv ~/.cache/guix-root ~root/.cache/guix
+            sudo chown -R root:root ~root/.cache/guix
+          fi
+
+          # Make sure that all expected directories exist.
+          mkdir -p ~/.cache/guix
+
+      - name: Install Guix
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        uses: sigprof/guix-install-action@b677b02f4c9cced3fb63cfc7d00f8565f6b075ae
+        with:
+          useExistingGuix: ${{ steps.restore_cache.outputs.cache-matched-key != '' }}
+          pullAfterInstall: >-
+            ${{
+              !startsWith(steps.restore_cache.outputs.cache-matched-key, steps.cache_name.outputs.ok_date_only_prefix)
+              && !startsWith(steps.restore_cache.outputs.cache-matched-key, steps.cache_name.outputs.fail_date_only_prefix)
+            }}
+
+      - name: Verify that Guix works without warnings
+        id: guix_setup_check
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        run: test -z "$(guix --version 2>&1 >/dev/null)"
+
+      - name: Checkout the project source
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        uses: actions/checkout@v4.1.1
+
+      - name: Build the Guix shell environment
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        run: guix shell -r ~/.cache/manifest-gcroot -m manifest.scm -- true
+
+      - name: Collect garbage
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        run: |
+          # Collect garbage
+
+          echo '::group::GC roots before the garbage collection'
+          sudo /var/guix/profiles/per-user/root/current-guix/bin/guix gc --list-roots
+          echo '::endgroup::'
+
+          echo '::group::Running GC'
+          sudo /var/guix/profiles/per-user/root/current-guix/bin/guix gc --delete-generations
+          echo '::endgroup::'
+
+          echo '::group::GC roots after the garbage collection'
+          sudo /var/guix/profiles/per-user/root/current-guix/bin/guix gc --list-roots
+          echo '::endgroup::'
+
+      - name: Build the Guix shell environment again
+        if: ${{ !steps.check_cache.outputs.cache-hit }}
+        run: |
+          # GC removes too much; this rebuild fetches those packages again.
+          guix shell -r ~/.cache/manifest-gcroot -m manifest.scm -- true
+
+      - name: Set cache name for a successful update
+        if: always() && !cancelled() && success()
+        run: echo 'final_cache_name=${{ steps.cache_name.outputs.ok}}' >> $GITHUB_ENV
+
+      - name: Set cache name for a failed update
+        if: always() && !cancelled() && !success()
+        run: echo 'final_cache_name=${{ steps.cache_name.outputs.fail}}' >> $GITHUB_ENV
+
+      - name: Determine the resulting cache name
+        id: saved_cache_name
+        if: always() && !cancelled()
+        run: echo "name=$final_cache_name" >> $GITHUB_OUTPUT
+
+      - name: Prepare to save the Guix store
+        id: guix_shutdown
+        if: >-
+          always() && !cancelled()
+          && !steps.check_cache.outputs.cache-hit
+          && (steps.guix_setup_check.outcome == 'success')
+        run: |
+          # Stop the Guix services.
+          sudo systemctl stop guix-daemon.service
+          sudo systemctl stop gnu-store.mount
+
+          # Move ~root/.cache/guix to an accessible place and adjust the
+          # permissions to make it readable for the cache action.
+          sudo mkdir -p ~root/.cache/guix
+          sudo mv ~root/.cache/guix ~/.cache/guix-root
+          sudo chown -R ${USER}: ~/.cache/guix-root
+
+          # Report uncompressed sizes of all cached paths.
+          set -f
+          set -- ${guix_cached_paths}
+          set +f
+          du -sh --total ${*/#\~/$HOME}
+
+      - name: Save the Guix store in the cache
+        if: >-
+          always() && !cancelled()
+          && !steps.check_cache.outputs.cache-hit
+          && (steps.guix_shutdown.outcome == 'success')
+        uses: actions/cache/save@v3.3.2
+        with:
+          path: ${{ env.guix_cached_paths }}
+          key: ${{ steps.saved_cache_name.outputs.name }}
+
+  test:
+    needs: build
+    strategy: ${{ fromJSON(needs.build.outputs.strategy) }}
+
+    defaults:
+      run:
+        working-directory: qmk_firmware
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare the Guix store before restoring from cache
+        working-directory: .
+        run: |
+          # Make the Guix store writable for the current user
+          sudo mkdir -p /gnu/store /var/guix/db /var/guix/gcroots /var/guix/profiles
+          sudo chown -R ${USER}: /gnu /var/guix
+          sudo chmod -R u+w /gnu /var/guix
+
+      - name: Restore the Guix store from cache
+        id: restore_cache
+        uses: actions/cache/restore@v3.3.2
+        with:
+          path: ${{ env.guix_cached_paths }}
+          key: ${{ needs.build.outputs.cache_name }}
+          fail-on-cache-miss: true
+
+      - name: Fix up the Guix store after restoring it from cache
+        working-directory: .
+        run: |
+          # Fix up permissions for the Guix store when restoring from cache.
+          sudo chown -R root:root /gnu /var/guix
+          sudo chmod 755 /gnu
+          sudo chmod -R u-w /gnu/store
+          sudo chmod 1775 /gnu/store
+
+          # Move the Guix cache for root to the proper location (that cache is
+          # used to speed up `guix pull`).
+          if [ -d ~/.cache/guix-root ]; then
+            sudo mkdir -p ~root/.cache
+            sudo rm -rf ~root/.cache/guix
+            sudo mv ~/.cache/guix-root ~root/.cache/guix
+            sudo chown -R root:root ~root/.cache/guix
+          fi
+
+      - name: Install Guix
+        uses: sigprof/guix-install-action@b677b02f4c9cced3fb63cfc7d00f8565f6b075ae
+        with:
+          useExistingGuix: true
+          pullAfterInstall: false
+
+      - name: Verify that Guix works without warnings
+        working-directory: .
+        run: test -z "$(guix --version 2>&1 >/dev/null)"
+
+      - name: Checkout the project source
+        uses: actions/checkout@v4.1.1
+        with:
+          path: guix-qmk
+
+      - name: Build the Guix shell environment
+        working-directory: guix-qmk
+        run: guix shell -r ~/.cache/manifest-gcroot -m manifest.scm -- true
+
+      - name: Checkout the QMK firmware source code
+        uses: actions/checkout@v4.1.1
+        with:
+          path: qmk_firmware
+          repository: ${{ matrix.source.repo }}
+          ref: ${{ matrix.source.branch }}
+          submodules: recursive
+
+      - name: Configure the 'upstream' remote
+        run: |
+          git remote add -t master -t develop upstream https://github.com/qmk/qmk_firmware
+          git fetch --depth=1 --no-tags --no-recurse-submodules upstream
+
+      - name: Configure the udev rules
+        if: ${{ runner.os == 'Linux' }}
+        run: sudo install -o root -g root -m 0644 util/udev/50-qmk.rules /etc/udev/rules.d/
+
+      - name: Update submodules
+        run: guix shell -m ../guix-qmk/manifest.scm -- make git-submodule
+
+      - name: Test 'qmk doctor'
+        run: guix shell -m ../guix-qmk/manifest.scm -- qmk doctor
+
+      - name: Test 'qmk setup'
+        run: |
+          # Test 'qmk setup'
+          # 'qmk setup' does not return the exit code of 'qmk doctor',
+          # therefore grepping the text output is needed.
+          guix shell -m ../guix-qmk/manifest.scm -- qmk setup 2>&1 | tee qmk-setup.log
+          grep -q "QMK is ready to go" qmk-setup.log
+
+      - name: Test AVR build using 'make'
+        run: guix shell -m ../guix-qmk/manifest.scm -- make planck/rev5:default
+
+      - name: Test Arm build using 'make'
+        run: guix shell -m ../guix-qmk/manifest.scm -- make planck/rev6:default
+
+      - name: Test 'make clean'
+        run: guix shell -m ../guix-qmk/manifest.scm -- make clean
+
+      - name: Force clean before testing 'qmk compile'
+        run: git clean -fdx
+
+      - name: Test AVR build using 'qmk compile'
+        run: guix shell -m ../guix-qmk/manifest.scm -- qmk compile -kb planck/rev5 -km default
+
+      - name: Test Arm build using 'qmk compile'
+        run: guix shell -m ../guix-qmk/manifest.scm -- qmk compile -kb planck/rev6 -km default
+
+      - name: Test 'qmk clean'
+        run: guix shell -m ../guix-qmk/manifest.scm -- qmk clean
+
+  finish:
+    needs:
+      - build
+      - test
+    runs-on: ubuntu-latest
+    if: always()
+    env:
+      ci_success: >-
+        ${{
+          (needs.build.result == 'success')
+          && (needs.test.result == 'success')
+        }}
+    steps:
+      - name: Report CI status
+        run: $ci_success
