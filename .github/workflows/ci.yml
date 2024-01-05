@@ -169,6 +169,7 @@ jobs:
         if: ${{ !steps.check_cache.outputs.cache-hit }}
         uses: sigprof/guix-install-action@b677b02f4c9cced3fb63cfc7d00f8565f6b075ae
         with:
+          channels: '%default-channels'
           useExistingGuix: ${{ steps.restore_cache.outputs.cache-matched-key != '' }}
           pullAfterInstall: >-
             ${{
@@ -305,6 +306,7 @@ jobs:
       - name: Install Guix
         uses: sigprof/guix-install-action@b677b02f4c9cced3fb63cfc7d00f8565f6b075ae
         with:
+          channels: '%default-channels'
           useExistingGuix: true
           pullAfterInstall: false
 
