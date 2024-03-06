@@ -58,7 +58,10 @@ jobs:
             // Default settings.
             const defaultSource = [
               { repo: "qmk/qmk_firmware", branch: "master" },
-              { repo: "qmk/qmk_firmware", branch: "develop" },
+              // Not compatible with gcc-arm-none-eabi-7-2018-q2-update since
+              // https://github.com/qmk/qmk_firmware/pull/21656 had been merged
+              // (`_Alignas` in compound literals requires GCC >= 8.x).
+              // { repo: "qmk/qmk_firmware", branch: "develop" },
             ];
 
             // Read workflow inputs.
