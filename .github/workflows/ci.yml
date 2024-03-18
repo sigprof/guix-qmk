@@ -187,7 +187,7 @@ jobs:
 
       - name: Checkout the project source
         if: ${{ !steps.check_cache.outputs.cache-hit }}
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4.1.2
 
       - name: Build the Guix shell environment
         if: ${{ !steps.check_cache.outputs.cache-hit }}
@@ -318,7 +318,7 @@ jobs:
         run: test -z "$(guix --version 2>&1 >/dev/null)"
 
       - name: Checkout the project source
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4.1.2
         with:
           path: guix-qmk
 
@@ -327,7 +327,7 @@ jobs:
         run: guix shell -r ~/.cache/manifest-gcroot -m manifest.scm -- true
 
       - name: Checkout the QMK firmware source code
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4.1.2
         with:
           path: qmk_firmware
           repository: ${{ matrix.source.repo }}
