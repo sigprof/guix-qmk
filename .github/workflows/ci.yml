@@ -120,7 +120,7 @@ jobs:
 
       - name: Check whether the Guix cache needs updating
         id: check_cache
-        uses: actions/cache/restore@v4.0.1
+        uses: actions/cache/restore@v4.0.2
         with:
           path: ${{ env.guix_cached_paths }}
           key: ${{ steps.cache_name.outputs.ok }}
@@ -137,7 +137,7 @@ jobs:
       - name: Restore the Guix store from cache
         id: restore_cache
         if: ${{ !steps.check_cache.outputs.cache-hit }}
-        uses: actions/cache/restore@v4.0.1
+        uses: actions/cache/restore@v4.0.2
         with:
           path: ${{ env.guix_cached_paths }}
           key: ${{ steps.cache_name.outputs.ok }}
@@ -257,7 +257,7 @@ jobs:
           always() && !cancelled()
           && !steps.check_cache.outputs.cache-hit
           && (steps.guix_shutdown.outcome == 'success')
-        uses: actions/cache/save@v4.0.1
+        uses: actions/cache/save@v4.0.2
         with:
           path: ${{ env.guix_cached_paths }}
           key: ${{ steps.saved_cache_name.outputs.name }}
@@ -282,7 +282,7 @@ jobs:
 
       - name: Restore the Guix store from cache
         id: restore_cache
-        uses: actions/cache/restore@v4.0.1
+        uses: actions/cache/restore@v4.0.2
         with:
           path: ${{ env.guix_cached_paths }}
           key: ${{ needs.build.outputs.cache_name }}
